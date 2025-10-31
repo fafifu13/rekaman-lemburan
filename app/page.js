@@ -302,4 +302,134 @@ export default function OvertimeTracker() {
           <label className="block text-sm font-semibold text-gray-700 mb-2">Pilih Nama Karyawan</label>
           <select
             value={selectedEmployee}
-            onChange={(e) => setSelectedEmpl
+            onChange={(e) => setSelectedEmployee(e.target.value)}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-lg"
+          >
+            <option value="">-- Pilih Nama --</option>
+            {employees.map((emp, idx) => (
+              <option key={idx} value={emp}>{emp}</option>
+            ))}
+          </select>
+        </div>
+
+        {selectedEmployee && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-xl font-bold mb-4">{selectedEmployee}</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">📝 Alasan/Deskripsi Pekerjaan Lembur</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-4 py-2 border rounded-lg"
+                  rows="3"
+                  placeholder="Jelaskan pekerjaan lembur..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2">⏰ Tanggal & Jam Mulai</label>
+                  <input
+                    type="datetime-local"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">⏰ Tanggal & Jam Selesai</label>
+                  <input
+                    type="datetime-local"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {duration && (
+                <div className="px-4 py-3 bg-indigo-50 text-indigo-700 rounded-lg text-center font-bold">
+                  Total Waktu Lembur: {duration}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2">📸 Bukti Jam Mulai</label>
+                  <div
+                    className="border-2 border-dashed rounded-lg p-6 text-center hover:border-indigo-400 transition"
+                    onDrop={(e) => handleDrop(e, 'proofStart')}
+                    onDragOver={(e) => e.preventDefault()}
+                    onPaste={(e) => handlePaste(e, 'proofStart')}
+                    tabIndex={0}
+                  >
+                    <p className="text-sm mb-2 text-gray-600">Drag, paste (Ctrl+V), atau klik</p>
+                    <input
+                      type="file"
+                      id="proof-start"
+                      onChange={(e) => handleFileChange(e, 'proofStart')}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="proof-start"
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer inline-block hover:bg-indigo-700 transition"
+                    >
+                      Pilih File
+                    </label>
+                    {formData.proofStart && (
+                      <p className="mt-2 text-green-600 text-sm font-medium">✓ {formData.proofStart.name}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">📸 Bukti Jam Selesai</label>
+                  <div
+                    className="border-2 border-dashed rounded-lg p-6 text-center hover:border-indigo-400 transition"
+                    onDrop={(e) => handleDrop(e, 'proofEnd')}
+                    onDragOver={(e) => e.preventDefault()}
+                    onPaste={(e) => handlePaste(e, 'proofEnd')}
+                    tabIndex={0}
+                  >
+                    <p className="text-sm mb-2 text-gray-600">Drag, paste (Ctrl+V), atau klik</p>
+                    <input
+                      type="file"
+                      id="proof-end"
+                      onChange={(e) => handleFileChange(e, 'proofEnd')}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="proof-end"
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer inline-block hover:bg-indigo-700 transition"
+                    >
+                      Pilih File
+                    </label>
+                    {formData.proofEnd && (
+                      <p className="mt-2 text-green-600 text-sm font-medium">✓ {formData.proofEnd.name}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveOvertime}
+                disabled={loading}
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? '⏳ Menyimpan...' : '💾 Simpan Lembur'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <footer className="fixed bottom-0 left-0 right-0 bg-indigo-700 text-white py-4 shadow-lg">
+        <p className="text-center font-semibold">KJPP AMANAH</p>
+      </footer>
+    </div>
+  )
+}
