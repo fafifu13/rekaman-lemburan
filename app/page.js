@@ -24,6 +24,7 @@ export default function OvertimeTracker() {
   const [loading, setLoading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
+  const [filterEmployee, setFilterEmployee] = useState('')
   const [formData, setFormData] = useState({
     description: '',
     startTime: '',
@@ -144,7 +145,16 @@ export default function OvertimeTracker() {
       }])
       if (error) throw error
       alert('Data lembur berhasil disimpan!')
-      setFormData({ description: '', startTime: '', endTime: '', proofStart: null, proofEnd: null })
+      
+      // Reset form tapi NAMA TETAP
+      setFormData({ 
+        description: '', 
+        startTime: '', 
+        endTime: '', 
+        proofStart: null, 
+        proofEnd: null 
+      })
+      
       await loadData()
     } catch (error) {
       console.error('Error saving:', error)
@@ -167,7 +177,12 @@ export default function OvertimeTracker() {
   const downloadExcel = () => {
     let csvContent = "\uFEFF"
     csvContent += "No,Nama,Deskripsi,Tgl Mulai,Jam Mulai,Tgl Selesai,Jam Selesai,Total,Link Mulai,Link Selesai\n"
-    overtimeData.forEach((item, index) => {
+    
+    const dataToExport = filterEmployee 
+      ? overtimeData.filter(item => item.name === filterEmployee)
+      : overtimeData
+    
+    dataToExport.forEach((item, index) => {
       const duration = calculateDuration(item.start_time, item.end_time)
       const startDate = new Date(item.start_time)
       const endDate = new Date(item.end_time)
@@ -188,27 +203,52 @@ export default function OvertimeTracker() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `Lemburan_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.csv`
+    const fileName = filterEmployee 
+      ? `Lemburan_${filterEmployee}_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.csv`
+      : `Lemburan_Semua_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.csv`
+    link.download = fileName
     link.click()
   }
 
   const clearAllData = async () => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus semua data lembur?')) {
-      try {
-        const { error } = await supabase.from('overtime_records').delete().gte('id', 0)
-        if (error) throw error
-        await loadData()
-        alert('Semua data berhasil dihapus!')
-      } catch (error) {
-        alert('Gagal menghapus data: ' + error.message)
-      }
+    const confirmText = 'Apakah Anda yakin ingin menghapus SEMUA data lembur dari SEMUA karyawan? Data yang terhapus tidak dapat dikembalikan!'
+    
+    if (!window.confirm(confirmText)) {
+      return
+    }
+    
+    // Konfirmasi kedua untuk keamanan
+    if (!window.confirm('Konfirmasi sekali lagi: Hapus SEMUA data lembur?')) {
+      return
+    }
+    
+    setLoading(true)
+    try {
+      // Hapus semua data tanpa kondisi
+      const { error } = await supabase
+        .from('overtime_records')
+        .delete()
+        .neq('id', 0) // Trick: kondisi yang selalu true untuk hapus semua
+      
+      if (error) throw error
+      
+      await loadData()
+      alert('Semua data lembur berhasil dihapus!')
+    } catch (error) {
+      console.error('Error deleting:', error)
+      alert('Gagal menghapus data: ' + error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
   const viewPreview = (data) => {
     setPreviewData(data)
-    setShowPreview(true)
   }
+
+  const filteredData = filterEmployee 
+    ? overtimeData.filter(item => item.name === filterEmployee)
+    : overtimeData
 
   const duration = calculateDuration(formData.startTime, formData.endTime)
 
@@ -225,7 +265,7 @@ export default function OvertimeTracker() {
                 <>
                   <button onClick={() => setShowPreview(true)} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">Preview</button>
                   <button onClick={downloadExcel} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">Download</button>
-                  <button onClick={clearAllData} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">Hapus</button>
+                  <button onClick={clearAllData} disabled={loading} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm disabled:bg-gray-400">Hapus Semua</button>
                   <button onClick={() => setIsAdmin(false)} className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm">Logout</button>
                 </>
               )}
@@ -251,19 +291,46 @@ export default function OvertimeTracker() {
             <div className="bg-white rounded-xl p-6 w-full max-w-6xl max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold">Preview Data Lembur</h2>
-                <button onClick={() => setShowPreview(false)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Tutup</button>
+                <button onClick={() => { setShowPreview(false); setFilterEmployee('') }} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Tutup</button>
               </div>
               
-              {overtimeData.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">Belum ada data lembur</p>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">Filter Berdasarkan Nama:</label>
+                <select 
+                  value={filterEmployee} 
+                  onChange={(e) => setFilterEmployee(e.target.value)}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Semua Karyawan --</option>
+                  {employees.map((emp, idx) => (
+                    <option key={idx} value={emp}>{emp}</option>
+                  ))}
+                </select>
+                {filterEmployee && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Menampilkan {filteredData.length} data untuk <strong>{filterEmployee}</strong>
+                  </p>
+                )}
+              </div>
+
+              {filteredData.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  {filterEmployee ? `Belum ada data lembur untuk ${filterEmployee}` : 'Belum ada data lembur'}
+                </p>
               ) : (
                 <div className="space-y-4">
-                  {overtimeData.map((item, idx) => (
+                  {filteredData.map((item, idx) => (
                     <div key={idx} className="border rounded-lg p-4 hover:shadow-lg transition">
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">{item.name}</h3>
-                          <p className="text-sm text-gray-500">#{idx + 1}</p>
+                          <p className="text-sm text-gray-500">
+                            {new Date(item.created_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </p>
                         </div>
                         <button onClick={() => viewPreview(item)} className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">Detail</button>
                       </div>
@@ -389,7 +456,7 @@ export default function OvertimeTracker() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2">Bukti Jam Selesai</label>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center" onDrop={(e) => handleDrop(e, 'proofEnd')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => handlePaste(e, 'proofEnd')} tabIndex={0}>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center" onDrop={(e) => handleDrop(e, 'proofEnd')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => 'proofEnd')} tabIndex={0}>
                     <p className="text-sm mb-2">Drag, paste, atau klik</p>
                     <input type="file" id="proof-end" onChange={(e) => handleFileChange(e, 'proofEnd')} accept="image/*" className="hidden" />
                     <label htmlFor="proof-end" className="px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer inline-block">Pilih File</label>
