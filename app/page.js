@@ -25,6 +25,8 @@ export default function OvertimeTracker() {
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
   const [filterEmployee, setFilterEmployee] = useState('')
+  const [filterMonth, setFilterMonth] = useState('')
+  const [filterYear, setFilterYear] = useState('')
   const [formData, setFormData] = useState({
     description: '',
     startTime: '',
@@ -146,7 +148,6 @@ export default function OvertimeTracker() {
       if (error) throw error
       alert('Data lembur berhasil disimpan!')
       
-      // Reset form tapi NAMA TETAP
       setFormData({ 
         description: '', 
         startTime: '', 
@@ -178,11 +179,7 @@ export default function OvertimeTracker() {
     let csvContent = "\uFEFF"
     csvContent += "No,Nama,Deskripsi,Tgl Mulai,Jam Mulai,Tgl Selesai,Jam Selesai,Total,Link Mulai,Link Selesai\n"
     
-    const dataToExport = filterEmployee 
-      ? overtimeData.filter(item => item.name === filterEmployee)
-      : overtimeData
-    
-    dataToExport.forEach((item, index) => {
+    filteredData.forEach((item, index) => {
       const duration = calculateDuration(item.start_time, item.end_time)
       const startDate = new Date(item.start_time)
       const endDate = new Date(item.end_time)
@@ -203,34 +200,39 @@ export default function OvertimeTracker() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    const fileName = filterEmployee 
-      ? `Lemburan_${filterEmployee}_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.csv`
-      : `Lemburan_Semua_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.csv`
+    let fileName = 'Lemburan'
+    if (filterEmployee) fileName += `_${filterEmployee}`
+    if (filterMonth && filterYear) fileName += `_${filterMonth}-${filterYear}`
+    fileName += `_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.csv`
     link.download = fileName
     link.click()
   }
 
   const clearAllData = async () => {
-    const confirmText = 'Apakah Anda yakin ingin menghapus SEMUA data lembur dari SEMUA karyawan? Data yang terhapus tidak dapat dikembalikan!'
-    
-    if (!window.confirm(confirmText)) {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus SEMUA data lembur dari SEMUA karyawan? Data yang terhapus tidak dapat dikembalikan!')) {
       return
     }
-    
-    // Konfirmasi kedua untuk keamanan
     if (!window.confirm('Konfirmasi sekali lagi: Hapus SEMUA data lembur?')) {
       return
     }
     
     setLoading(true)
     try {
-      // Hapus semua data tanpa kondisi
-      const { error } = await supabase
+      const { data: allRecords, error: fetchError } = await supabase
         .from('overtime_records')
-        .delete()
-        .neq('id', 0) // Trick: kondisi yang selalu true untuk hapus semua
+        .select('id')
       
-      if (error) throw error
+      if (fetchError) throw fetchError
+      
+      if (allRecords && allRecords.length > 0) {
+        const ids = allRecords.map(record => record.id)
+        const { error: deleteError } = await supabase
+          .from('overtime_records')
+          .delete()
+          .in('id', ids)
+        
+        if (deleteError) throw deleteError
+      }
       
       await loadData()
       alert('Semua data lembur berhasil dihapus!')
@@ -246,9 +248,40 @@ export default function OvertimeTracker() {
     setPreviewData(data)
   }
 
-  const filteredData = filterEmployee 
-    ? overtimeData.filter(item => item.name === filterEmployee)
-    : overtimeData
+  const getAvailableMonths = () => {
+    const months = new Set()
+    overtimeData.forEach(item => {
+      const date = new Date(item.created_at)
+      months.add(date.getMonth() + 1)
+    })
+    return Array.from(months).sort((a, b) => a - b)
+  }
+
+  const getAvailableYears = () => {
+    const years = new Set()
+    overtimeData.forEach(item => {
+      const date = new Date(item.created_at)
+      years.add(date.getFullYear())
+    })
+    return Array.from(years).sort((a, b) => b - a)
+  }
+
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ]
+
+  const filteredData = overtimeData.filter(item => {
+    const itemDate = new Date(item.created_at)
+    const itemMonth = itemDate.getMonth() + 1
+    const itemYear = itemDate.getFullYear()
+    
+    const matchesEmployee = !filterEmployee || item.name === filterEmployee
+    const matchesMonth = !filterMonth || itemMonth === parseInt(filterMonth)
+    const matchesYear = !filterYear || itemYear === parseInt(filterYear)
+    
+    return matchesEmployee && matchesMonth && matchesYear
+  })
 
   const duration = calculateDuration(formData.startTime, formData.endTime)
 
@@ -291,36 +324,72 @@ export default function OvertimeTracker() {
             <div className="bg-white rounded-xl p-6 w-full max-w-6xl max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold">Preview Data Lembur</h2>
-                <button onClick={() => { setShowPreview(false); setFilterEmployee('') }} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Tutup</button>
+                <button onClick={() => { setShowPreview(false); setFilterEmployee(''); setFilterMonth(''); setFilterYear('') }} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Tutup</button>
               </div>
               
-              <div className="mb-4">
-                <label className="block text-sm font-semibold mb-2">Filter Berdasarkan Nama:</label>
-                <select 
-                  value={filterEmployee} 
-                  onChange={(e) => setFilterEmployee(e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">-- Semua Karyawan --</option>
-                  {employees.map((emp, idx) => (
-                    <option key={idx} value={emp}>{emp}</option>
-                  ))}
-                </select>
-                {filterEmployee && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Menampilkan {filteredData.length} data untuk <strong>{filterEmployee}</strong>
-                  </p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Nama Karyawan:</label>
+                  <select 
+                    value={filterEmployee} 
+                    onChange={(e) => setFilterEmployee(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Semua Karyawan --</option>
+                    {employees.map((emp, idx) => (
+                      <option key={idx} value={emp}>{emp}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Bulan:</label>
+                  <select 
+                    value={filterMonth} 
+                    onChange={(e) => setFilterMonth(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Semua Bulan --</option>
+                    {getAvailableMonths().map(month => (
+                      <option key={month} value={month}>{monthNames[month - 1]}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Tahun:</label>
+                  <select 
+                    value={filterYear} 
+                    onChange={(e) => setFilterYear(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">-- Semua Tahun --</option>
+                    {getAvailableYears().map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {(filterEmployee || filterMonth || filterYear) && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Filter aktif:</strong> {filteredData.length} data
+                    {filterEmployee && ` untuk ${filterEmployee}`}
+                    {filterMonth && ` - ${monthNames[parseInt(filterMonth) - 1]}`}
+                    {filterYear && ` ${filterYear}`}
+                  </p>
+                </div>
+              )}
 
               {filteredData.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
-                  {filterEmployee ? `Belum ada data lembur untuk ${filterEmployee}` : 'Belum ada data lembur'}
+                  Belum ada data lembur yang sesuai dengan filter
                 </p>
               ) : (
                 <div className="space-y-4">
                   {filteredData.map((item, idx) => (
-                    <div key={idx} className="border rounded-lg p-4 hover:shadow-lg transition">
+                    <div key={item.id} className="border rounded-lg p-4 hover:shadow-lg transition">
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="text-lg font-bold text-gray-800">{item.name}</h3>
