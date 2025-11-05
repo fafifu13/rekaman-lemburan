@@ -456,7 +456,7 @@ export default function OvertimeTracker() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2">Bukti Jam Selesai</label>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center" onDrop={(e) => handleDrop(e, 'proofEnd')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => 'proofEnd')} tabIndex={0}>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center" onDrop={(e) => handleDrop(e, 'proofEnd')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => handlePaste(e, 'proofEnd')} tabIndex={0}>
                     <p className="text-sm mb-2">Drag, paste, atau klik</p>
                     <input type="file" id="proof-end" onChange={(e) => handleFileChange(e, 'proofEnd')} accept="image/*" className="hidden" />
                     <label htmlFor="proof-end" className="px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer inline-block">Pilih File</label>
