@@ -170,8 +170,33 @@ export default function OvertimeTracker() {
       setIsAdmin(true)
       setShowAdminLogin(false)
       setAdminPassword('')
+      setShowPreview(true) // Auto buka preview setelah login
     } else {
       alert('Password salah!')
+    }
+  }
+
+  const deleteOvertimeRecord = async (id, name) => {
+    if (!window.confirm(`Hapus data lembur ${name}?`)) {
+      return
+    }
+    
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('overtime_records')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+      
+      await loadData()
+      alert('Data berhasil dihapus!')
+    } catch (error) {
+      console.error('Error deleting:', error)
+      alert('Gagal menghapus data: ' + error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -206,42 +231,6 @@ export default function OvertimeTracker() {
     fileName += `_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.csv`
     link.download = fileName
     link.click()
-  }
-
-  const clearAllData = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus SEMUA data lembur dari SEMUA karyawan? Data yang terhapus tidak dapat dikembalikan!')) {
-      return
-    }
-    if (!window.confirm('Konfirmasi sekali lagi: Hapus SEMUA data lembur?')) {
-      return
-    }
-    
-    setLoading(true)
-    try {
-      const { data: allRecords, error: fetchError } = await supabase
-        .from('overtime_records')
-        .select('id')
-      
-      if (fetchError) throw fetchError
-      
-      if (allRecords && allRecords.length > 0) {
-        const ids = allRecords.map(record => record.id)
-        const { error: deleteError } = await supabase
-          .from('overtime_records')
-          .delete()
-          .in('id', ids)
-        
-        if (deleteError) throw deleteError
-      }
-      
-      await loadData()
-      alert('Semua data lembur berhasil dihapus!')
-    } catch (error) {
-      console.error('Error deleting:', error)
-      alert('Gagal menghapus data: ' + error.message)
-    } finally {
-      setLoading(false)
-    }
   }
 
   const viewPreview = (data) => {
@@ -285,24 +274,196 @@ export default function OvertimeTracker() {
 
   const duration = calculateDuration(formData.startTime, formData.endTime)
 
+  // Jika admin, tampilkan halaman admin
+  if (isAdmin && showPreview) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="max-w-6xl mx-auto pb-20">
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Dashboard Admin - Data Lembur</h1>
+              <div className="flex gap-2">
+                <button onClick={downloadExcel} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">📥 Download Excel</button>
+                <button onClick={() => { setIsAdmin(false); setShowPreview(false) }} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm">Logout</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 className="text-xl font-bold mb-4">Filter Data</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Nama Karyawan:</label>
+                <select 
+                  value={filterEmployee} 
+                  onChange={(e) => setFilterEmployee(e.target.value)}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Semua Karyawan --</option>
+                  {employees.map((emp, idx) => (
+                    <option key={idx} value={emp}>{emp}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold mb-2">Bulan:</label>
+                <select 
+                  value={filterMonth} 
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Semua Bulan --</option>
+                  {getAvailableMonths().map(month => (
+                    <option key={month} value={month}>{monthNames[month - 1]}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold mb-2">Tahun:</label>
+                <select 
+                  value={filterYear} 
+                  onChange={(e) => setFilterYear(e.target.value)}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">-- Semua Tahun --</option>
+                  {getAvailableYears().map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {(filterEmployee || filterMonth || filterYear) && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Menampilkan:</strong> {filteredData.length} data
+                  {filterEmployee && ` - ${filterEmployee}`}
+                  {filterMonth && ` - ${monthNames[parseInt(filterMonth) - 1]}`}
+                  {filterYear && ` ${filterYear}`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {filteredData.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+              <p className="text-gray-500 text-lg">Belum ada data lembur yang sesuai dengan filter</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredData.map((item, idx) => (
+                <div key={item.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">{item.name}</h3>
+                      <p className="text-sm text-gray-500">
+                        {new Date(item.created_at).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => viewPreview(item)} className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition">📋 Detail</button>
+                      <button onClick={() => deleteOvertimeRecord(item.id, item.name)} disabled={loading} className="px-4 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition disabled:bg-gray-400">🗑️ Hapus</button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-600 font-semibold">Deskripsi:</p>
+                      <p className="text-gray-800">{item.description}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-semibold">Total Waktu:</p>
+                      <p className="text-indigo-600 font-bold text-lg">{calculateDuration(item.start_time, item.end_time)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-semibold">Mulai:</p>
+                      <p className="text-gray-800">{new Date(item.start_time).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-semibold">Selesai:</p>
+                      <p className="text-gray-800">{new Date(item.end_time).toLocaleString('id-ID')}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-2 font-semibold">Bukti Jam Mulai:</p>
+                      <img src={item.proof_start_url} alt="Bukti Mulai" className="w-full h-40 object-cover rounded-lg border-2 cursor-pointer hover:opacity-80 transition" onClick={() => window.open(item.proof_start_url, '_blank')} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-2 font-semibold">Bukti Jam Selesai:</p>
+                      <img src={item.proof_end_url} alt="Bukti Selesai" className="w-full h-40 object-cover rounded-lg border-2 cursor-pointer hover:opacity-80 transition" onClick={() => window.open(item.proof_end_url, '_blank')} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {previewData && (
+            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-bold">{previewData.name}</h2>
+                  <button onClick={() => setPreviewData(null)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Tutup</button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <p className="font-semibold text-gray-700">Deskripsi Pekerjaan:</p>
+                    <p className="text-gray-800 bg-gray-50 p-3 rounded">{previewData.description}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="font-semibold text-gray-700">Jam Mulai:</p>
+                      <p className="text-gray-800">{new Date(previewData.start_time).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-700">Jam Selesai:</p>
+                      <p className="text-gray-800">{new Date(previewData.end_time).toLocaleString('id-ID')}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-indigo-50 p-3 rounded">
+                    <p className="font-bold text-indigo-700 text-center text-lg">
+                      Total: {calculateDuration(previewData.start_time, previewData.end_time)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-gray-700 mb-2">Bukti Jam Mulai:</p>
+                    <img src={previewData.proof_start_url} alt="Bukti Mulai" className="w-full rounded-lg shadow-lg cursor-pointer" onClick={() => window.open(previewData.proof_start_url, '_blank')} />
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-gray-700 mb-2">Bukti Jam Selesai:</p>
+                    <img src={previewData.proof_end_url} alt="Bukti Selesai" className="w-full rounded-lg shadow-lg cursor-pointer" onClick={() => window.open(previewData.proof_end_url, '_blank')} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        <footer className="fixed bottom-0 left-0 right-0 bg-indigo-700 text-white py-4"><p className="text-center font-semibold">KJPP AMANAH</p></footer>
+      </div>
+    )
+  }
+
+  // Halaman untuk karyawan (non-admin)
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-4xl mx-auto pb-20">
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Sistem Lemburan Bulanan</h1>
-            <div className="flex gap-2">
-              {!isAdmin ? (
-                <button onClick={() => setShowAdminLogin(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm">Admin</button>
-              ) : (
-                <>
-                  <button onClick={() => setShowPreview(true)} className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">Preview</button>
-                  <button onClick={downloadExcel} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">Download</button>
-                  <button onClick={clearAllData} disabled={loading} className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm disabled:bg-gray-400">Hapus Semua</button>
-                  <button onClick={() => setIsAdmin(false)} className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm">Logout</button>
-                </>
-              )}
-            </div>
+            <button onClick={() => setShowAdminLogin(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm">Admin</button>
           </div>
         </div>
 
@@ -314,173 +475,6 @@ export default function OvertimeTracker() {
               <div className="flex gap-2">
                 <button onClick={handleAdminLogin} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Login</button>
                 <button onClick={() => { setShowAdminLogin(false); setAdminPassword('') }} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Batal</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showPreview && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl p-6 w-full max-w-6xl max-h-screen overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">Preview Data Lembur</h2>
-                <button onClick={() => { setShowPreview(false); setFilterEmployee(''); setFilterMonth(''); setFilterYear('') }} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Tutup</button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Nama Karyawan:</label>
-                  <select 
-                    value={filterEmployee} 
-                    onChange={(e) => setFilterEmployee(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">-- Semua Karyawan --</option>
-                    {employees.map((emp, idx) => (
-                      <option key={idx} value={emp}>{emp}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Bulan:</label>
-                  <select 
-                    value={filterMonth} 
-                    onChange={(e) => setFilterMonth(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">-- Semua Bulan --</option>
-                    {getAvailableMonths().map(month => (
-                      <option key={month} value={month}>{monthNames[month - 1]}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-semibold mb-2">Tahun:</label>
-                  <select 
-                    value={filterYear} 
-                    onChange={(e) => setFilterYear(e.target.value)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">-- Semua Tahun --</option>
-                    {getAvailableYears().map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {(filterEmployee || filterMonth || filterYear) && (
-                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Filter aktif:</strong> {filteredData.length} data
-                    {filterEmployee && ` untuk ${filterEmployee}`}
-                    {filterMonth && ` - ${monthNames[parseInt(filterMonth) - 1]}`}
-                    {filterYear && ` ${filterYear}`}
-                  </p>
-                </div>
-              )}
-
-              {filteredData.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">
-                  Belum ada data lembur yang sesuai dengan filter
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {filteredData.map((item, idx) => (
-                    <div key={item.id} className="border rounded-lg p-4 hover:shadow-lg transition">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-800">{item.name}</h3>
-                          <p className="text-sm text-gray-500">
-                            {new Date(item.created_at).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            })}
-                          </p>
-                        </div>
-                        <button onClick={() => viewPreview(item)} className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">Detail</button>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <p className="text-gray-600 font-semibold">Deskripsi:</p>
-                          <p className="text-gray-800">{item.description}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600 font-semibold">Total Waktu:</p>
-                          <p className="text-indigo-600 font-bold">{calculateDuration(item.start_time, item.end_time)}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600 font-semibold">Mulai:</p>
-                          <p className="text-gray-800">{new Date(item.start_time).toLocaleString('id-ID')}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600 font-semibold">Selesai:</p>
-                          <p className="text-gray-800">{new Date(item.end_time).toLocaleString('id-ID')}</p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 mt-3">
-                        <div>
-                          <p className="text-xs text-gray-600 mb-1">Bukti Mulai:</p>
-                          <img src={item.proof_start_url} alt="Bukti Mulai" className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80" onClick={() => window.open(item.proof_start_url, '_blank')} />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-600 mb-1">Bukti Selesai:</p>
-                          <img src={item.proof_end_url} alt="Bukti Selesai" className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80" onClick={() => window.open(item.proof_end_url, '_blank')} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {previewData && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">{previewData.name}</h2>
-                <button onClick={() => setPreviewData(null)} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Tutup</button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <p className="font-semibold text-gray-700">Deskripsi Pekerjaan:</p>
-                  <p className="text-gray-800 bg-gray-50 p-3 rounded">{previewData.description}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="font-semibold text-gray-700">Jam Mulai:</p>
-                    <p className="text-gray-800">{new Date(previewData.start_time).toLocaleString('id-ID')}</p>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-700">Jam Selesai:</p>
-                    <p className="text-gray-800">{new Date(previewData.end_time).toLocaleString('id-ID')}</p>
-                  </div>
-                </div>
-
-                <div className="bg-indigo-50 p-3 rounded">
-                  <p className="font-bold text-indigo-700 text-center text-lg">
-                    Total: {calculateDuration(previewData.start_time, previewData.end_time)}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="font-semibold text-gray-700 mb-2">Bukti Jam Mulai:</p>
-                  <img src={previewData.proof_start_url} alt="Bukti Mulai" className="w-full rounded-lg shadow-lg cursor-pointer" onClick={() => window.open(previewData.proof_start_url, '_blank')} />
-                </div>
-
-                <div>
-                  <p className="font-semibold text-gray-700 mb-2">Bukti Jam Selesai:</p>
-                  <img src={previewData.proof_end_url} alt="Bukti Selesai" className="w-full rounded-lg shadow-lg cursor-pointer" onClick={() => window.open(previewData.proof_end_url, '_blank')} />
-                </div>
               </div>
             </div>
           </div>
