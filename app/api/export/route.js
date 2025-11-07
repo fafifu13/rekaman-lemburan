@@ -1,63 +1,56 @@
-import { NextResponse } from 'next/server'
-import * as XLSX from 'xlsx'
-import { supabase } from '../../../lib/supabase'
+import { NextResponse } from 'next/server';
+import { supabase } from '../../../lib/supabase';
+import XLSX from 'xlsx';
 
 export async function GET() {
-  // Ambil data dari Supabase
+  // Ambil semua data lembur dari Supabase
   const { data, error } = await supabase
     .from('overtime_records')
     .select('*')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error(error);
+    return NextResponse.json({ error: 'Gagal mengambil data' });
   }
 
-  // Konversi data ke format XLSX
-  const rows = data.map((item, index) => {
-    const start = new Date(item.start_time)
-    const end = new Date(item.end_time)
-
-    return {
-      No: index + 1,
-      Nama: item.name,
-      Deskripsi: item.description,
-      "Tgl Mulai": start.toLocaleDateString('id-ID'),
-      "Jam Mulai": start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-      "Tgl Selesai": end.toLocaleDateString('id-ID'),
-      "Jam Selesai": end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-      Total: getDuration(item.start_time, item.end_time),
-      "Link Mulai": item.proof_start_url,
-      "Link Selesai": item.proof_end_url
-    }
-  })
+  // Convert data Supabase -> data untuk Excel
+  const excelData = data.map((row, index) => ({
+    No: index + 1,
+    Nama: row.name,
+    Deskripsi: row.description,
+    "Tgl Mulai": new Date(row.start_time).toLocaleDateString("id-ID"),
+    "Jam Mulai": new Date(row.start_time).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+    "Tgl Selesai": new Date(row.end_time).toLocaleDateString("id-ID"),
+    "Jam Selesai": new Date(row.end_time).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+    Total: calculateDuration(row.start_time, row.end_time),
+    "Link Mulai": row.proof_start_url,
+    "Link Selesai": row.proof_end_url
+  }));
 
   // Buat workbook Excel
-  const worksheet = XLSX.utils.json_to_sheet(rows)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Lembur')
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(excelData);
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Lembur");
 
-  // Buffer Excel
-  const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+  const excelBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
   return new NextResponse(excelBuffer, {
     status: 200,
     headers: {
-      'Content-Disposition': `attachment; filename="Lembur.xlsx"`,
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    }
-  })
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="Lembur.xlsx"`,
+    },
+  });
 }
 
-// Function hitung durasi
-function getDuration(start, end) {
-  const s = new Date(start)
-  const e = new Date(end)
-  const diff = Math.floor((e - s) / 60000)
-  const hours = Math.floor(diff / 60)
-  const minutes = diff % 60
-
-  if (hours === 0) return `${minutes} menit`
-  if (minutes === 0) return `${hours} jam`
-  return `${hours} jam ${minutes} menit`
+function calculateDuration(start, end) {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const diffMinutes = Math.floor((endDate - startDate) / 60000);
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  if (hours === 0) return `${minutes} menit`;
+  if (minutes === 0) return `${hours} jam`;
+  return `${hours} jam ${minutes} menit`;
 }
