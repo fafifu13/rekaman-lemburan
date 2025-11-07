@@ -284,7 +284,7 @@ export default function OvertimeTracker() {
   // Jika admin, tampilkan halaman admin
   if (isAdmin && showPreview) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-4 animate-gradient">
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 through-blue-300 to-yellow-300 p-4 animate-gradient">
         <style>{`
           @keyframes gradient {
             0% { background-position: 0% 50%; }
