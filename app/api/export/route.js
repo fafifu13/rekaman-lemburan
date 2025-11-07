@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../../lib/supabase'
@@ -32,27 +35,24 @@ export async function GET() {
     }
   })
 
-  // Buat workbook Excel
   const worksheet = XLSX.utils.json_to_sheet(rows)
 
-  // ✅ Tambahkan pengaturan lebar kolom
   worksheet['!cols'] = [
-    { wch: 5 },   // No
-    { wch: 25 },  // Nama
-    { wch: 40 },  // Deskripsi
-    { wch: 12 },  // Tgl Mulai
-    { wch: 10 },  // Jam Mulai
-    { wch: 12 },  // Tgl Selesai
-    { wch: 10 },  // Jam Selesai
-    { wch: 15 },  // Total
-    { wch: 50 },  // Link Mulai
-    { wch: 50 },  // Link Selesai
+    { wch: 5 },
+    { wch: 25 },
+    { wch: 40 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 15 },
+    { wch: 50 },
+    { wch: 50 }
   ]
 
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Lembur')
 
-  // Buffer Excel
   const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
 
   return new NextResponse(excelBuffer, {
@@ -64,7 +64,6 @@ export async function GET() {
   })
 }
 
-// Function hitung durasi
 function getDuration(start, end) {
   const s = new Date(start)
   const e = new Date(end)
