@@ -177,24 +177,36 @@ export default function OvertimeTracker() {
   }
 
   const deleteOvertimeRecord = async (id, name) => {
-    if (!window.confirm(`Hapus data lembur ${name}?`)) {
+    if (!window.confirm(`Hapus data lembur untuk ${name}?\n\nData yang dihapus tidak dapat dikembalikan!`)) {
       return
     }
     
     setLoading(true)
     try {
-      const { error } = await supabase
+      // Hapus data dengan match ID yang tepat
+      const { data, error } = await supabase
         .from('overtime_records')
         .delete()
-        .eq('id', id)
+        .match({ id: id })
+        .select()
       
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
       
+      // Update state lokal segera
+      setOvertimeData(prevData => prevData.filter(item => item.id !== id))
+      
+      // Reload data dari server untuk memastikan sinkron
       await loadData()
+      
       alert('Data berhasil dihapus!')
     } catch (error) {
       console.error('Error deleting:', error)
       alert('Gagal menghapus data: ' + error.message)
+      // Reload data meskipun error untuk memastikan tampilan benar
+      await loadData()
     } finally {
       setLoading(false)
     }
