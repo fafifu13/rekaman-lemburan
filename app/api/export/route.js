@@ -34,6 +34,21 @@ export async function GET() {
 
   // Buat workbook Excel
   const worksheet = XLSX.utils.json_to_sheet(rows)
+
+  // ✅ Tambahkan pengaturan lebar kolom
+  worksheet['!cols'] = [
+    { wch: 5 },   // No
+    { wch: 25 },  // Nama
+    { wch: 40 },  // Deskripsi
+    { wch: 12 },  // Tgl Mulai
+    { wch: 10 },  // Jam Mulai
+    { wch: 12 },  // Tgl Selesai
+    { wch: 10 },  // Jam Selesai
+    { wch: 15 },  // Total
+    { wch: 50 },  // Link Mulai
+    { wch: 50 },  // Link Selesai
+  ]
+
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Lembur')
 
