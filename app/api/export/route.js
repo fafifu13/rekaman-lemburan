@@ -15,40 +15,40 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message });
 
-  const rows = data.map((d) => ({
+  // Format data agar rapi
+  const rows = data.map((d, i) => ({
+    "No": i + 1,
     "Nama Karyawan": d.nama,
-    "Alasan Lembur": d.alasan,
-    "Tanggal": d.tanggal,
+    "Alasan": d.alasan,
+    "Tanggal Mulai": d.tanggal,
     "Jam Mulai": d.jam_mulai,
+    "Tanggal Selesai": d.tanggal_selesai,
     "Jam Selesai": d.jam_selesai,
+    "Durasi": d.durasi,
     "Foto (Klik Link)": d.foto_url,
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
 
-  const colWidths = [];
-  const keys = Object.keys(rows[0] || {});
-  keys.forEach((key) => {
-    let max = key.length;
-    rows.forEach((r) => {
-      const val = r[key] ? String(r[key]) : "";
-      if (val.length > max) max = val.length;
-    });
-    colWidths.push({ wch: max + 2 });
-  });
-  worksheet["!cols"] = colWidths;
+  // Auto lebar kolom
+  const widths = Object.keys(rows[0]).map((key) => ({
+    wch: Math.max(
+      key.length,
+      ...rows.map((r) => (r[key] ? r[key].toString().length : 0))
+    ) + 2
+  }));
+
+  worksheet["!cols"] = widths;
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Lemburan");
 
-  const buffer = XLSX.write(workbook, {
-    bookType: "xlsx",
-    type: "buffer",
-  });
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
   return new NextResponse(buffer, {
     headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": "attachment; filename=lemburan.xlsx",
     },
   });
