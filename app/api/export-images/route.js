@@ -107,7 +107,7 @@ export async function GET() {
       })
 
       sheet.addImage(idEnd, {
-        tl: { col: 9.3, row: rowIndex - 1 + 0.25 }, // ✅ lebih tengah
+        tl: { col: 9.55, row: rowIndex - 1 + 0.25 }, // ✅ lebih tengah
         ext: { width: maxWidth, height: maxHeight }
       })
     }
