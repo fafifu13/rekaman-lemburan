@@ -45,14 +45,21 @@ export async function GET() {
     { header: "Foto Selesai", key: "fotoSelesai", width: 20 }
   ]
 
+  // ✅ Header rata tengah + bold
+  sheet.getRow(1).eachCell((cell) => {
+    cell.alignment = { horizontal: "center", vertical: "middle" }
+    cell.font = { bold: true }
+  })
+
   // Loop data
   for (let i = 0; i < data.length; i++) {
     const item = data[i]
     const start = new Date(item.start_time)
     const end = new Date(item.end_time)
 
-    // Tambah row data
-    const rowIndex = i + 2 // row 1 = header
+    const rowIndex = i + 2 // Row 1 = header
+
+    // Add row
     sheet.addRow({
       no: i + 1,
       nama: item.name,
@@ -62,6 +69,11 @@ export async function GET() {
       tglSelesai: end.toLocaleDateString('id-ID'),
       jamSelesai: end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       total: getDuration(item.start_time, item.end_time)
+    })
+
+    // ✅ Row data rata tengah
+    sheet.getRow(rowIndex).eachCell((cell) => {
+      cell.alignment = { horizontal: "center", vertical: "middle" }
     })
 
     // Foto MULAI
@@ -90,7 +102,7 @@ export async function GET() {
       })
     }
 
-    // Tinggi baris supaya gambar muat
+    // Tinggi baris agar gambar pas
     sheet.getRow(rowIndex).height = 80
   }
 
