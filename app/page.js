@@ -176,6 +176,42 @@ export default function OvertimeTracker() {
     }
   }
 
+  const deleteAllData = async () => {
+    const confirmMessage = `⚠️ PERINGATAN! ⚠️\n\nAnda akan menghapus SEMUA data lembur!\nTotal data: ${overtimeData.length} record\n\nData yang dihapus TIDAK DAPAT dikembalikan!\n\nApakah Anda yakin ingin melanjutkan?`
+    
+    if (!window.confirm(confirmMessage)) {
+      return
+    }
+    
+    // Konfirmasi kedua untuk keamanan
+    const secondConfirm = window.prompt('Ketik "HAPUS SEMUA" untuk konfirmasi (huruf besar semua):')
+    if (secondConfirm !== 'HAPUS SEMUA') {
+      alert('Penghapusan dibatalkan!')
+      return
+    }
+    
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('overtime_records')
+        .delete()
+        .neq('id', 0) // Menghapus semua data
+      
+      if (error) throw error
+      
+      setOvertimeData([])
+      await loadData()
+      
+      alert(`✅ Berhasil menghapus semua data lembur!`)
+    } catch (error) {
+      console.error('Error deleting all data:', error)
+      alert('❌ Gagal menghapus data: ' + error.message)
+      await loadData()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const deleteOvertimeRecord = async (id, name) => {
     if (!window.confirm(`Hapus data lembur untuk ${name}?\n\nData yang dihapus tidak dapat dikembalikan!`)) {
       return
@@ -324,13 +360,123 @@ export default function OvertimeTracker() {
                 <p className="text-sm text-gray-600 mt-1">Kelola dan pantau data lembur karyawan</p>
               </div>
               <div className="flex gap-2">
-      {/* Download Excel dengan gambar */}
- <button
-  onClick={() => window.location.href = "/api/export-images"}
-  className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold"
->
-  📥 Download
-</button>
+                {/* Download Excel dengan gambar */}
+                <button onClick={() => setShowAdminLogin(true)} className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 text-sm font-semibold float">
+              🔐 Admin
+            </button>
+          </div>
+        </div>
+
+        {showAdminLogin && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 fade-in-up">
+            <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl transform scale-100 transition-transform">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">🔐</span>
+                </div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Login Admin</h2>
+              </div>
+              <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Masukkan password" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-4 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all" onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()} />
+              <div className="flex gap-3">
+                <button onClick={handleAdminLogin} className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-semibold">Login</button>
+                <button onClick={() => { setShowAdminLogin(false); setAdminPassword('') }} className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all font-semibold">Batal</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl p-6 mb-4 fade-in-up border border-white/20 transform hover:scale-[1.02] transition-all duration-300">
+          <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="text-xl">👤</span>
+            Pilih Nama Karyawan
+          </label>
+          <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg transition-all cursor-pointer hover:border-indigo-400">
+            <option value="">-- Pilih Nama --</option>
+            {employees.map((emp, idx) => (<option key={idx} value={emp}>{emp}</option>))}
+          </select>
+        </div>
+
+        {selectedEmployee && (
+          <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl p-6 border border-white/20 fade-in-up">
+            <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
+              <span className="text-2xl">✨</span>
+              {selectedEmployee}
+            </h3>
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold mb-2 flex items-center gap-2">
+                  <span>📝</span>
+                  Alasan/Deskripsi Pekerjaan Lembur
+                </label>
+                <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" rows="3" placeholder="Jelaskan pekerjaan lembur..." />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
+                    <span>🕐</span>
+                    Tanggal & Jam Mulai
+                  </label>
+                  <input type="datetime-local" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
+                    <span>🕐</span>
+                    Tanggal & Jam Selesai
+                  </label>
+                  <input type="datetime-local" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" />
+                </div>
+              </div>
+              {duration && (<div className="px-4 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-center font-bold text-lg shadow-lg pulse-slow">⏱️ Total Waktu Lembur: {duration}</div>)}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
+                    <span>📸</span>
+                    Bukti Jam Mulai
+                  </label>
+                  <div className="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer" onDrop={(e) => handleDrop(e, 'proofStart')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => handlePaste(e, 'proofStart')} tabIndex={0}>
+                    <p className="text-sm mb-3 text-gray-600">📤 Drag, paste, atau klik</p>
+                    <input type="file" id="proof-start" onChange={(e) => handleFileChange(e, 'proofStart')} accept="image/*" className="hidden" />
+                    <label htmlFor="proof-start" className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl cursor-pointer inline-block hover:shadow-lg transform hover:scale-105 transition-all font-semibold">Pilih File</label>
+                    {formData.proofStart && (<p className="mt-3 text-green-600 text-sm font-semibold">✓ {formData.proofStart.name}</p>)}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
+                    <span>📸</span>
+                    Bukti Jam Selesai
+                  </label>
+                  <div className="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer" onDrop={(e) => handleDrop(e, 'proofEnd')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => handlePaste(e, 'proofEnd')} tabIndex={0}>
+                    <p className="text-sm mb-3 text-gray-600">📤 Drag, paste, atau klik</p>
+                    <input type="file" id="proof-end" onChange={(e) => handleFileChange(e, 'proofEnd')} accept="image/*" className="hidden" />
+                    <label htmlFor="proof-end" className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl cursor-pointer inline-block hover:shadow-lg transform hover:scale-105 transition-all font-semibold">Pilih File</label>
+                    {formData.proofEnd && (<p className="mt-3 text-green-600 text-sm font-semibold">✓ {formData.proofEnd.name}</p>)}
+                  </div>
+                </div>
+              </div>
+              <button onClick={handleSaveOvertime} disabled={loading} className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">{loading ? '⏳ Menyimpan...' : '💾 Simpan Lembur'}</button>
+            </div>
+          </div>
+        )}
+      </div>
+      <footer className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 shadow-lg">
+        <p className="text-center font-bold text-lg">✨ KJPP AMANAH ✨</p>
+      </footer>
+    </div>
+  )
+}
+                  onClick={() => window.location.href = "/api/export-images"}
+                  className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold"
+                >
+                  📥 Download
+                </button>
+                {/* Tombol Hapus Semua Data */}
+                <button
+                  onClick={deleteAllData}
+                  disabled={loading}
+                  className="px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  🗑️ Hapus Semua
+                </button>
                 <button onClick={() => { setIsAdmin(false); setShowPreview(false) }} className="px-4 py-2.5 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold">🚪 Logout</button>
               </div>
             </div>
@@ -575,106 +721,4 @@ export default function OvertimeTracker() {
               </h1>
               <p className="text-sm text-gray-600 mt-1">Catat jam lembur dengan mudah dan cepat</p>
             </div>
-            <button onClick={() => setShowAdminLogin(true)} className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 text-sm font-semibold float">
-              🔐 Admin
-            </button>
-          </div>
-        </div>
-
-        {showAdminLogin && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 fade-in-up">
-            <div className="bg-white rounded-2xl p-8 w-80 shadow-2xl transform scale-100 transition-transform">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-3xl">🔐</span>
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Login Admin</h2>
-              </div>
-              <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="Masukkan password" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-4 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all" onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()} />
-              <div className="flex gap-3">
-                <button onClick={handleAdminLogin} className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-semibold">Login</button>
-                <button onClick={() => { setShowAdminLogin(false); setAdminPassword('') }} className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all font-semibold">Batal</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl p-6 mb-4 fade-in-up border border-white/20 transform hover:scale-[1.02] transition-all duration-300">
-          <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <span className="text-xl">👤</span>
-            Pilih Nama Karyawan
-          </label>
-          <select value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg transition-all cursor-pointer hover:border-indigo-400">
-            <option value="">-- Pilih Nama --</option>
-            {employees.map((emp, idx) => (<option key={idx} value={emp}>{emp}</option>))}
-          </select>
-        </div>
-
-        {selectedEmployee && (
-          <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-xl p-6 border border-white/20 fade-in-up">
-            <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
-              <span className="text-2xl">✨</span>
-              {selectedEmployee}
-            </h3>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-bold mb-2 flex items-center gap-2">
-                  <span>📝</span>
-                  Alasan/Deskripsi Pekerjaan Lembur
-                </label>
-                <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" rows="3" placeholder="Jelaskan pekerjaan lembur..." />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
-                    <span>🕐</span>
-                    Tanggal & Jam Mulai
-                  </label>
-                  <input type="datetime-local" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
-                    <span>🕐</span>
-                    Tanggal & Jam Selesai
-                  </label>
-                  <input type="datetime-local" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all" />
-                </div>
-              </div>
-              {duration && (<div className="px-4 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl text-center font-bold text-lg shadow-lg pulse-slow">⏱️ Total Waktu Lembur: {duration}</div>)}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
-                    <span>📸</span>
-                    Bukti Jam Mulai
-                  </label>
-                  <div className="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer" onDrop={(e) => handleDrop(e, 'proofStart')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => handlePaste(e, 'proofStart')} tabIndex={0}>
-                    <p className="text-sm mb-3 text-gray-600">📤 Drag, paste, atau klik</p>
-                    <input type="file" id="proof-start" onChange={(e) => handleFileChange(e, 'proofStart')} accept="image/*" className="hidden" />
-                    <label htmlFor="proof-start" className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl cursor-pointer inline-block hover:shadow-lg transform hover:scale-105 transition-all font-semibold">Pilih File</label>
-                    {formData.proofStart && (<p className="mt-3 text-green-600 text-sm font-semibold">✓ {formData.proofStart.name}</p>)}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-2 flex items-center gap-2">
-                    <span>📸</span>
-                    Bukti Jam Selesai
-                  </label>
-                  <div className="border-2 border-dashed border-indigo-300 rounded-xl p-6 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer" onDrop={(e) => handleDrop(e, 'proofEnd')} onDragOver={(e) => e.preventDefault()} onPaste={(e) => handlePaste(e, 'proofEnd')} tabIndex={0}>
-                    <p className="text-sm mb-3 text-gray-600">📤 Drag, paste, atau klik</p>
-                    <input type="file" id="proof-end" onChange={(e) => handleFileChange(e, 'proofEnd')} accept="image/*" className="hidden" />
-                    <label htmlFor="proof-end" className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl cursor-pointer inline-block hover:shadow-lg transform hover:scale-105 transition-all font-semibold">Pilih File</label>
-                    {formData.proofEnd && (<p className="mt-3 text-green-600 text-sm font-semibold">✓ {formData.proofEnd.name}</p>)}
-                  </div>
-                </div>
-              </div>
-              <button onClick={handleSaveOvertime} disabled={loading} className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">{loading ? '⏳ Menyimpan...' : '💾 Simpan Lembur'}</button>
-            </div>
-          </div>
-        )}
-      </div>
-      <footer className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 shadow-lg">
-        <p className="text-center font-bold text-lg">✨ KJPP AMANAH ✨</p>
-      </footer>
-    </div>
-  )
-}
+            <button
