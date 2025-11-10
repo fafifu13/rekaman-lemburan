@@ -325,12 +325,12 @@ export default function OvertimeTracker() {
               </div>
               <div className="flex gap-2">
       {/* Download Excel dengan gambar */}
-  <button
-    onClick={() => window.location.href = "/api/export-images"}
-    className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl"
-  >
-    📷 Download
-  </button>
+ <button
+  onClick={() => window.location.href = "/api/export-images"}
+  className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold"
+>
+  📥 Download
+</button>
                 <button onClick={() => { setIsAdmin(false); setShowPreview(false) }} className="px-4 py-2.5 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold">🚪 Logout</button>
               </div>
             </div>
