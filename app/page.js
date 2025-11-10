@@ -324,18 +324,12 @@ export default function OvertimeTracker() {
                 <p className="text-sm text-gray-600 mt-1">Kelola dan pantau data lembur karyawan</p>
               </div>
               <div className="flex gap-2">
-                <button
-  onClick={() => window.location.href = "/api/export"}
-  className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold"
->
-  📥 Download
-</button>
       {/* Download Excel dengan gambar */}
   <button
     onClick={() => window.location.href = "/api/export-images"}
     className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl"
   >
-    📷 Download Excel + Gambar
+    📷 Download
   </button>
                 <button onClick={() => { setIsAdmin(false); setShowPreview(false) }} className="px-4 py-2.5 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:shadow-lg transform hover:scale-105 transition-all text-sm font-semibold">🚪 Logout</button>
               </div>
