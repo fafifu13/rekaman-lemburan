@@ -41,8 +41,8 @@ export async function GET() {
     { header: "Tgl Selesai", key: "tglSelesai", width: 12 },
     { header: "Jam Selesai", key: "jamSelesai", width: 12 },
     { header: "Total", key: "total", width: 15 },
-    { header: "Foto Mulai", key: "fotoMulai", width: 18 },
-    { header: "Foto Selesai", key: "fotoSelesai", width: 18 }
+    { header: "Foto Mulai", key: "fotoMulai", width: 20 },
+    { header: "Foto Selesai", key: "fotoSelesai", width: 20 }
   ]
 
   // Header rata tengah + bold
@@ -50,6 +50,10 @@ export async function GET() {
     cell.alignment = { horizontal: "center", vertical: "middle" }
     cell.font = { bold: true }
   })
+
+  // ✅ Kolom gambar rata tengah
+  sheet.getColumn(9).alignment = { horizontal: "center", vertical: "middle" }
+  sheet.getColumn(10).alignment = { horizontal: "center", vertical: "middle" }
 
   // Loop data
   for (let i = 0; i < data.length; i++) {
@@ -76,38 +80,40 @@ export async function GET() {
       cell.alignment = { horizontal: "center", vertical: "middle" }
     })
 
-    // ---- ✅ Ukuran foto yang pas ----
-    const maxWidth = 90
-    const maxHeight = 90
+    // ✅ Ukuran foto
+    const maxWidth = 95
+    const maxHeight = 95
 
-    // FOTO MULAI
+    // ✅ FOTO MULAI
     const imgStart = await fetchImage(item.proof_start_url)
     if (imgStart) {
       const idStart = workbook.addImage({
         buffer: imgStart,
         extension: 'png'
       })
+
       sheet.addImage(idStart, {
-        tl: { col: 8, row: rowIndex - 1 },
+        tl: { col: 8.3, row: rowIndex - 1 + 0.25 },  // ✅ lebih tengah
         ext: { width: maxWidth, height: maxHeight }
       })
     }
 
-    // FOTO SELESAI
+    // ✅ FOTO SELESAI
     const imgEnd = await fetchImage(item.proof_end_url)
     if (imgEnd) {
       const idEnd = workbook.addImage({
         buffer: imgEnd,
         extension: 'png'
       })
+
       sheet.addImage(idEnd, {
-        tl: { col: 9, row: rowIndex - 1 },
+        tl: { col: 9.3, row: rowIndex - 1 + 0.25 }, // ✅ lebih tengah
         ext: { width: maxWidth, height: maxHeight }
       })
     }
 
-    // ✅ Tinggi baris agar gambar pas di tengah dan tidak melewati kolom
-    sheet.getRow(rowIndex).height = 85
+    // ✅ Tinggi baris agar gambar pas tengah
+    sheet.getRow(rowIndex).height = 90
   }
 
   const buffer = await workbook.xlsx.writeBuffer()
