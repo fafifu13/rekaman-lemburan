@@ -320,7 +320,7 @@ export default function OvertimeTracker() {
           <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl p-6 mb-6 fade-in-up border border-white/20">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">📊 Dashboard Admin - Data Lembur</h1>
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">🚀 Dashboard Admin - Data Lembur</h1>
                 <p className="text-sm text-gray-600 mt-1">Kelola dan pantau data lembur karyawan</p>
               </div>
               <div className="flex gap-2">
@@ -571,7 +571,7 @@ export default function OvertimeTracker() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                ⏰ Sistem Lemburan Bulanan
+                ⏳ Sistem Lemburan Bulanan
               </h1>
               <p className="text-sm text-gray-600 mt-1">Catat jam lembur dengan mudah dan cepat</p>
             </div>
